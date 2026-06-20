@@ -102,6 +102,7 @@ docs/
   DATASETS.md        zh-TW / en code-switch corpora (TAT, CommonVoice zh-TW, ASCEND, SEAME…)
   EVAL.md            MER (CER+WER) + code-switch boundary + RTF/latency methodology
 scripts/
+  stream_asr.py      DEPLOYABLE streaming recognizer: X-ASR int8 → optional hotwords → s2twp (attendant ref)
   zh_tw_postproc.py  OpenCC s2twp (maximal CJK runs) + CJK normalization (zero-retrain; --selftest)
   build_hotwords.py  CN→TW term TSV → Simplified sherpa-onnx hotwords file with boosts
   bench_nano.py      streaming RTF + encoder ms/chunk @ N threads on device

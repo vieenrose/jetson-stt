@@ -95,6 +95,21 @@ fine-tune*:**
 **Verdict: the budget is not at risk with the real TTS config.** (Re-confirm if TTS is ever raised to
 multi-thread or if STT switches to `modified_beam_search`/LM, which add decoder/joiner compute.)
 
+### Tier-2 (hotwords / modified_beam_search) RTF — measurement pending device recovery
+`scripts/stream_asr.py` is the deployable path (X-ASR int8 → optional contextual hotwords → s2twp) and the
+tool to compare greedy vs `modified_beam_search`(+hotwords) RTF at 2 threads on-device. The measurement
+run was **cut off when the Nano became unreachable** (4 GB device, OOM from concurrent model loads — needs
+a reboot). **Reasoned estimate pending the real number:** the encoder dominates and is unchanged by the
+decoding method; `modified_beam_search` (`max_active_paths=4`) only adds beam expansion on the small
+decoder/joiner (joiner is 2.5 MB int8), so expect roughly **+10–30% over greedy** → pure-streaming RTF
+~0.33–0.40, comfortably within budget and the +5% TTS co-tenancy headroom. **To confirm once the device is
+back:**
+```bash
+python scripts/stream_asr.py --model-dir ~/xasr-bench/int8-960 --tokens ~/xasr-bench/tokens.txt \
+    --wav-dir tw_cs --threads 2 --decoding-method greedy_search          --out hyp_g.tsv
+python scripts/stream_asr.py ... --decoding-method modified_beam_search --hotwords hotwords.txt --out hyp_h.tsv
+```
+
 ## Scope note — Taiwanese Hokkien is out of band for this model
 [Breeze-ASR-26](https://huggingface.co/MediaTek-Research/Breeze-ASR-26) (raised during this work) is a
 Taiwanese **Hokkien (Taigi/台語)** recognizer (Whisper-large-v2, 2B, **offline**, 30.13% CER on the Taigi
