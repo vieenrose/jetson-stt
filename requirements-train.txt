@@ -1,0 +1,8 @@
+# Train / export env (host with GPU only — never the Nano). See docs/ENV_SETUP.md.
+# torch + k2 + icefall are installed per https://k2-fsa.github.io/icefall/installation/
+# (CUDA-matched; not pip-pinnable here). The rest:
+lhotse>=1.20
+sentencepiece>=0.1.99
+onnx>=1.15
+onnxruntime>=1.16
+jiwer>=3.0          # WER/CER helpers for offline eval cross-checks

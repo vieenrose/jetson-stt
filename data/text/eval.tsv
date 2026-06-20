@@ -1,0 +1,13 @@
+# Seed zh-TW/en code-switch eval transcripts (Traditional references).
+# Columns: id <TAB> text   (references for scoring deployed, post-s2twp output)
+# THIS IS A SEED. docs/EVAL.md requires >=70 utterances before numbers are trustworthy — expand it.
+cs_001	昨天是 Monday，今天是禮拜二，後天是星期三
+cs_002	請幫我把這個 file 上傳到 Google Drive
+cs_003	我的 laptop 螢幕壞掉了，要送修
+cs_004	這個 project 的 deadline 是下禮拜五
+cs_005	可以用悠遊卡在便利商店付款嗎
+cs_006	我想預約明天下午三點的 meeting
+cs_007	軟體更新之後 app 一直 crash
+cs_008	請問你們有提供 free Wi-Fi 嗎
+cs_009	台積電的 stock price 今天漲了百分之三
+cs_010	幫我訂一台計程車到台北車站

@@ -1,0 +1,33 @@
+# Seed CN -> TW vocabulary / entity list for Tier-2 contextual biasing.
+# Columns: tw_term <TAB> cn_term(optional, for reference) <TAB> boost(optional)
+# `s2twp` (Tier 1) already handles most generic vocabulary; this list is for terms/entities
+# where you want extra decode-time bias, or where OpenCC's mapping is ambiguous.
+# Expand for the attendant's own domain (product names, locations, caller intents).
+#
+# tw_term	cn_term	boost
+軟體	软件	2.0
+硬體	硬件	2.0
+記憶體	内存	2.0
+滑鼠	鼠标	2.0
+螢幕	屏幕	2.0
+列印	打印	2.0
+影片	视频	2.0
+網路	网络	2.0
+行動電話	手机	1.5
+計程車	出租车	2.0
+馬鈴薯	土豆	2.0
+鳳梨	菠萝	2.0
+資訊	信息	1.5
+程式	程序	2.0
+品質	质量	1.5
+解析度	分辨率	2.0
+雷射	激光	2.5
+列表機	打印机	2.0
+隨身碟	U盘	2.5
+部落格	博客	2.5
+# Taiwan named entities / brands (no cn_term; high boost — OpenCC won't help)
+台積電		3.0
+聯發科		3.0
+鴻海		2.5
+中華電信		2.5
+悠遊卡		2.5

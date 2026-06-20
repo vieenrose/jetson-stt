@@ -1,0 +1,47 @@
+# Python env (rebuild via docs/ENV_SETUP.md)
+.venv/
+.venv-train/
+__pycache__/
+*.pyc
+
+# Model artifacts (large; from HF / export — never committed)
+*.onnx
+*.pt
+*.pth
+*.gguf
+models/
+export/
+
+# Corpora & audio (large, license-gated; reproducible per docs/DATASETS.md)
+data/audio/
+data/pairs/
+data/corpora/
+data/manifests/
+*.wav
+*.mp3
+*.flac
+
+# Generated decode-time artifacts (reproducible via scripts/)
+data/tw_terms/hotwords.txt
+hyp*.tsv
+results/
+eval/*.json
+eval/wavs/
+
+# Training runs / checkpoints (large, reproducible)
+finetune/runs/
+finetune/ft_runs/
+finetune/configs/local_*
+
+# Third-party source clones (cloned per docs/ENV_SETUP.md)
+third_party/icefall/
+third_party/sherpa-onnx/
+third_party/x-asr-rapidspeech/
+
+# Logs / scratch
+logs/
+*.log
+nohup.out
+
+# OS
+.DS_Store

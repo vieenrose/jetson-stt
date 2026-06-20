@@ -1,0 +1,7 @@
+# Deploy / eval env (Jetson Nano aarch64 + host). Train deps are in requirements-train.txt.
+# On the Nano, install the sherpa-onnx wheel matching L4T R32.5.1 / onnxruntime 1.6.0
+# (see docs/ENV_SETUP.md) — the pin below is the host/dev floor.
+sherpa-onnx>=1.10.0
+numpy>=1.21
+soundfile>=0.12
+opencc-python-reimplemented>=0.1.7   # OpenCC s2twp for Tier-1 zh-TW post-processing
