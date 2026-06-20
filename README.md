@@ -62,9 +62,11 @@ in two — exactly mirroring `jetson-tts` (where Taiwan **readings shipped witho
 | **Code-switch boundaries** | en/zh split errors at switch points | `modified_beam_search` + hotwords + blank-penalty tuning | ❌ no — decode-time |
 | **Acoustic accent** | Taiwan-Mandarin phonetics (reduced retroflex, no erhua, TW prosody, Taiwanese-influenced) | **fine-tune the zipformer encoder on labeled TW audio** | ✅ **yes — the real fine-tune** |
 
-**Headline:** the *written form and domain vocabulary* — what makes output "look wrong for Taiwan" — are
-fixed at **decode/post-processing time with zero retraining** (`scripts/zh_tw_postproc.py`,
-`scripts/build_hotwords.py`). The genuinely data-bound problem is **acoustic robustness to
+**Headline (now measured on the Nano — [`docs/PHASE0_RESULTS.md`](docs/PHASE0_RESULTS.md)):** on 40 real
+Taiwan code-switch clips, the *written form* was **~67% of the error**, and OpenCC `s2twp`
+post-processing removes it with **zero retraining** (zhCER **0.441 → 0.145**). The *written form and
+domain vocabulary* — what makes output "look wrong for Taiwan" — are fixed at **decode/post-processing
+time** (`scripts/zh_tw_postproc.py`, `scripts/build_hotwords.py`). The genuinely data-bound problem is **acoustic robustness to
 Taiwan-accented speech**, and it carries the same regression risk `jetson-tts` hit with accent
 fine-tuning: pulling the model toward TW audio can degrade English and mainland-zh / code-switch. The
 plan therefore treats fine-tuning as **adapter/LoRA + low-LR + a retention set + an MER-gated checkpoint
@@ -90,6 +92,7 @@ TRAINING.md          the fine-tune recipe for zh-TW/en (answers "how do we make 
 docs/
   RESEARCH.md        verified research synthesis — Tier-0 resolved, methods, datasets, decode levers, alternatives
   RUNBOOK.md         Phase-0 gate, step by step (fix → build eval set → split test → co-tenancy)
+  PHASE0_RESULTS.md  MEASURED on the Nano: split test (s2twp removes 67% of error) + co-tenancy (budget at risk)
   BASELINE.md        X-ASR int8 sherpa-onnx CPU characterization @1/2/3/4 threads (measured)
   ENV_SETUP.md       sherpa-onnx + icefall env on host (train) and Nano (deploy)
   ZH_TW_PLAN.md      Taiwan-Mandarin adaptation, tier by tier (orthography → accent)
