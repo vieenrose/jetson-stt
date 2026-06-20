@@ -62,11 +62,12 @@ in two — exactly mirroring `jetson-tts` (where Taiwan **readings shipped witho
 | **Code-switch boundaries** | en/zh split errors at switch points | `modified_beam_search` + hotwords + blank-penalty tuning | ❌ no — decode-time |
 | **Acoustic accent** | Taiwan-Mandarin phonetics (reduced retroflex, no erhua, TW prosody, Taiwanese-influenced) | **fine-tune the zipformer encoder on labeled TW audio** | ✅ **yes — the real fine-tune** |
 
-**Headline (now measured on the Nano — [`docs/PHASE0_RESULTS.md`](docs/PHASE0_RESULTS.md)):** on 40 real
-Taiwan code-switch clips, the *written form* was **~67% of the error**, and OpenCC `s2twp`
-post-processing removes it with **zero retraining** (zhCER **0.441 → 0.145**). The *written form and
-domain vocabulary* — what makes output "look wrong for Taiwan" — are fixed at **decode/post-processing
-time** (`scripts/zh_tw_postproc.py`, `scripts/build_hotwords.py`). The genuinely data-bound problem is **acoustic robustness to
+**Headline (measured on the Nano — [`docs/PHASE0_RESULTS.md`](docs/PHASE0_RESULTS.md)):** on 40 real
+Taiwan code-switch clips, OpenCC `s2twp` post-processing cuts Taiwan zhCER **0.405 → 0.082** (~80%
+relative, **zero retraining**). And the residual (8%) sits within CIs of the model's mainland clean-read
+floor (4.8%) — **no Taiwan-accent acoustic gap was found, so a fine-tune is not justified.** The Taiwan
+problem is the *written form*, fixed at decode time (`scripts/zh_tw_postproc.py`, `scripts/build_hotwords.py`).
+Co-tenancy with the real single-thread matcha8k TTS costs STT only **~5%** — the 2-core budget holds. The genuinely data-bound problem is **acoustic robustness to
 Taiwan-accented speech**, and it carries the same regression risk `jetson-tts` hit with accent
 fine-tuning: pulling the model toward TW audio can degrade English and mainland-zh / code-switch. The
 plan therefore treats fine-tuning as **adapter/LoRA + low-LR + a retention set + an MER-gated checkpoint

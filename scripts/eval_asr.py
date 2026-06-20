@@ -53,9 +53,14 @@ def tokenize(text):
             i += 1
         elif ch.isalnum() or ch == "'":
             m = _WORD.match(text, i)
-            w = m.group(0)
-            content.append(Tok(w, w.lower(), "en"))
-            i = m.end()
+            if m:
+                w = m.group(0)
+                content.append(Tok(w, w.lower(), "en"))
+                i = m.end()
+            else:
+                # non-ASCII alphanumeric (full-width digit, accented/Greek letter): own token
+                content.append(Tok(ch, ch.lower(), "en"))
+                i += 1
         else:
             if ch in _PUNCT:
                 punct.append(ch)
