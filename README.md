@@ -67,7 +67,9 @@ Taiwan code-switch clips, OpenCC `s2twp` post-processing cuts Taiwan zhCER **0.4
 relative, **zero retraining**). And the residual (8%) sits within CIs of the model's mainland clean-read
 floor (4.8%) — **no Taiwan-accent acoustic gap was found, so a fine-tune is not justified.** The Taiwan
 problem is the *written form*, fixed at decode time (`scripts/zh_tw_postproc.py`, `scripts/build_hotwords.py`).
-Co-tenancy with the real single-thread matcha8k TTS costs STT only **~5%** — the 2-core budget holds. The genuinely data-bound problem is **acoustic robustness to
+Co-tenancy with the real single-thread matcha8k TTS costs STT only **~5%** — the 2-core budget holds.
+Head-to-head, the Taiwan SOTA **Breeze-ASR-25** (2B, offline, GPU, in-domain) beats deployed X-ASR by only
+**~3 pp MER with overlapping CIs** — the streaming 2-core model is CI-competitive with a 40×-larger model. The genuinely data-bound problem is **acoustic robustness to
 Taiwan-accented speech**, and it carries the same regression risk `jetson-tts` hit with accent
 fine-tuning: pulling the model toward TW audio can degrade English and mainland-zh / code-switch. The
 plan therefore treats fine-tuning as **adapter/LoRA + low-LR + a retention set + an MER-gated checkpoint

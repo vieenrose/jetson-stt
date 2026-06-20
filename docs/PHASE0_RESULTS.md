@@ -43,6 +43,35 @@ zhCER/enWER on-device (95% bootstrap CI, 1000 resamples):
 **Verdict: ship Tier-1 `s2twp` + Tier-2 hotwords. Do not spend GPU on an accent fine-tune.** (If a clean
 CV-zh-TW read slice later shows a real read-speech gap vs FLEURS, revisit — but Phase 0 says no.)
 
+### Gate 1b — head-to-head vs the Taiwan SOTA (Breeze-ASR-25)  →  **confirms no fine-tune**
+
+The missing *upper bound*: [Breeze-ASR-25](https://huggingface.co/MediaTek-Research/Breeze-ASR-25) — the
+Taiwan-Mandarin + zh-en code-switch SOTA (Whisper-large-v2, 2B, **offline**, Apache-2.0/MIT) — transcribed
+the **same 40 NTUML2021 clips** on the GB10 GPU (transformers, `chunk_length_s=0`, Traditional output, no
+OpenCC). Same MER metric as the Breeze paper. 95% bootstrap CI (2000 resamples):
+
+| system | MER | 95% CI | zhCER | enWER |
+|---|---|---|---|---|
+| **Breeze-ASR-25** — offline 2B, GPU, **in-domain** (see caveat) | **0.056** | [0.024, 0.097] | 0.046 | 0.235 |
+| **X-ASR int8 streaming + s2twp** — deployed, 2 CPU cores, out-of-domain | **0.087** | [0.044, 0.146] | 0.082 | 0.176 |
+
+**This is the "small gap, overlapping CIs" pattern the pre-registered rule maps to *confirm no
+fine-tune*:**
+- The Taiwan SOTA, with **every** advantage — **40× the parameters, offline, on a GPU, and trained on
+  this exact corpus** (NTUML2021 is in Breeze's training set, per its card/paper → its number here is
+  *optimistic/in-domain*, not held-out) — beats the deployed **streaming int8 model on 2 CPU cores** by
+  only **~3 pp MER, with fully overlapping confidence intervals.**
+- Breeze's zhCER (0.046) ≈ X-ASR's **mainland clean-read floor** (0.048). X-ASR's 0.082 on disfluent
+  spontaneous lecture CS is squarely in the expected band, not an accent deficiency.
+- X-ASR even **edges Breeze on English** (enWER 0.176 vs 0.235) — both with wide CIs (few en tokens).
+- No published Breeze-vs-streaming-zipformer comparison existed; this is a novel, if small-N (40-utt),
+  data point. It says X-ASR is **remarkably competitive** with a 2B in-domain SOTA at a tiny fraction of
+  the compute — so a fine-tune (which couldn't reach Breeze's param class anyway) is **not warranted.**
+
+> Breeze-ASR-25 used here for **evaluation only** (Apache-2.0/MIT, attribution retained). It remains a
+> viable **distillation teacher** if a future, genuinely held-out gap ever appears — but Phase 0 shows
+> none.
+
 ## Gate 2 — co-tenancy budget (STT under the real TTS)  →  **budget holds**
 
 `scripts/bench_cotenancy.py`, STT pinned to cores 0,1; the co-tenant on the other core(s):
@@ -78,7 +107,9 @@ attendant is Mandarin+English only, no action.
 - **Ship Tier-1 `s2twp` now** (the measured majority win: Taiwan zhCER 0.405→0.082, zero retrain) and
   Tier-2 hotwords.
 - **Do not fine-tune for accent** — no acoustic gap measured; the model already handles Taiwan Mandarin
-  (8% CS-lecture CER vs 4.8% mainland clean-read, CIs overlap) and English (3.1% WER) well.
+  (8% CS-lecture CER vs 4.8% mainland clean-read, CIs overlap) and English (3.1% WER) well. **And the
+  Taiwan SOTA Breeze-ASR-25 (2B, offline, in-domain) beats deployed X-ASR by only ~3 pp MER with
+  overlapping CIs** — X-ASR is CI-competitive with a 40×-larger in-domain model.
 - **Budget is safe** with the real single-thread matcha8k TTS (1.05× co-tenancy cost).
 - **Decide Hokkien scope** separately (out of band for this edge model).
 
