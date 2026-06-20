@@ -71,12 +71,16 @@ plan therefore treats fine-tuning as **adapter/LoRA + low-LR + a retention set +
 selector**, not a naïve full fine-tune. See [`TRAINING.md`](TRAINING.md) and
 [`docs/ZH_TW_PLAN.md`](docs/ZH_TW_PLAN.md).
 
-### Gating reality: is there a trainable checkpoint?
+### Gating reality: is there a trainable checkpoint? — YES (resolved by research)
 
-The HF release ships **ONNX (sherpa export) only**. Fine-tuning weights needs the original **icefall
-PyTorch checkpoint + tokenizer + training config**, or a re-train from the icefall recipe. **Tier 0 of
-`TRAINING.md` is to confirm/recover the trainable artifact** before any GPU time is spent — every
-zero-retrain lever above is deliberately useful *even if that artifact never materializes*.
+**Tier 0 is resolved.** `GilgameshWind/X-ASR-zh-en` ships a trainable **`streaming_exp/pretrained.pt`
+(2.56 GB)**, and the full icefall recipe (`train.py`/`finetune.py`/`export-onnx-streaming.py` +
+`bpe.model`) is public at **[`github.com/Gilgamesh-J/X-ASR`](https://github.com/Gilgamesh-J/X-ASR)**.
+Weight fine-tuning (Tiers 3–4) is feasible today — no re-train from scratch needed; just smoke-test that
+the `.pt` loads against the recipe and matches the deployed dims first. icefall also ships **three**
+in-tree fine-tune paths for this exact Zipformer2 (full, **bottleneck adapter**, **LoRA**). Full verified
+detail, datasets, and the recommended plan: **[`docs/RESEARCH.md`](docs/RESEARCH.md)**. (The zero-retrain
+levers above remain the first thing to ship regardless.)
 
 ## Layout
 
@@ -84,6 +88,7 @@ zero-retrain lever above is deliberately useful *even if that artifact never mat
 README.md            this file — system context, baseline, ship-vs-data-bound split
 TRAINING.md          the fine-tune recipe for zh-TW/en (answers "how do we make it better?")
 docs/
+  RESEARCH.md        verified research synthesis — Tier-0 resolved, methods, datasets, decode levers, alternatives
   BASELINE.md        X-ASR int8 sherpa-onnx CPU characterization @1/2/3/4 threads (measured)
   ENV_SETUP.md       sherpa-onnx + icefall env on host (train) and Nano (deploy)
   ZH_TW_PLAN.md      Taiwan-Mandarin adaptation, tier by tier (orthography → accent)

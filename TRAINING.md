@@ -20,23 +20,27 @@ Tier 4  Full/partial FT + accent vector interpolation    ◄ last resort; high r
 
 ---
 
-## Tier 0 — Confirm the trainable artifact (do this before any GPU time)
+## Tier 0 — RESOLVED: the trainable artifact exists
 
-The HF release ships the **sherpa-onnx ONNX export** (encoder/decoder/joiner + `tokens.txt`), which is
-**inference-only**. Tiers 3–4 need one of:
+> **Updated by research ([`docs/RESEARCH.md`](docs/RESEARCH.md)).** The earlier "ONNX-only /
+> inference-only" assumption was **wrong**. Tiers 3–4 are **unblocked.**
 
-1. **The original icefall checkpoint** — `pretrained.pt` / `epoch-*.pt`, the BPE/char tokenizer that
-   produced the 5000-token vocab, and the model `config` (encoder dims, chunk/left-context, causal=True).
-   Ask the X-ASR author; check the icefall recipe lineage referenced in
-   [`ref/`](ref/) and `x-asr-rapidspeech/ref/icefall/`.
-2. **A re-train from the icefall recipe** to reproduce a trainable equivalent, then continue from there.
-3. **Nothing** — Tiers 3–4 are blocked. **Tiers 1–2 still deliver the bulk of the zh-TW win**, which is
-   why they are built first and depend on no checkpoint.
+The trainable artifacts are public:
+1. **`streaming_exp/pretrained.pt` (2.56 GB)** on `GilgameshWind/X-ASR-zh-en` (HF) — the icefall
+   checkpoint.
+2. **The full recipe** at [`github.com/Gilgamesh-J/X-ASR`](https://github.com/Gilgamesh-J/X-ASR):
+   `train.py`, `finetune.py`, `export-onnx-streaming.py`, `model.py`, `zipformer.py`, and the tokenizer
+   `data/lang_5000_with_punctuation/bpe_punc.model`.
 
-> Sanity check the tokenizer first: the vocab mixes CJK chars with English BPE pieces. Whether to keep
-> Simplified char tokens (and convert in post) or to extend the vocab with Traditional tokens is decided
-> here — extending the vocab forces an output-embedding/joiner resize and a longer retrain, so the
-> default is **keep the vocab, convert in post (Tier 1)**.
+**Before any GPU time, smoke-test:** download the `.pt`, load it against the recipe `model.py`, and
+confirm (a) it is the **punctuation** variant (vocab 5000-with-punct), (b) encoder dims/layers
+(6 stacks/19 layers, 192·256·512·768·512·256) match the deployed ONNX, (c) it is a single averaged
+checkpoint (export directly from it; no `--avg` epoch history). Confirm any "collected"-data license
+terms before redistributing a derivative.
+
+> Tokenizer decision: the vocab is **char+BPE, Simplified** (4000 CJK single chars + ~977 English BPE).
+> **Keep the vocab and convert in post (Tier 1)** — extending it with Traditional tokens would force an
+> output-embedding/joiner resize and a longer retrain for no acoustic gain.
 
 ---
 
@@ -103,22 +107,34 @@ Only the **acoustic accent** gap (Taiwan-Mandarin phonetics, Taiwanese-influence
 weights to move. The danger is the same one `jetson-tts` documented for accent FT: pulling the model
 toward TW audio **degrades English and mainland-zh / code-switch**. So adapt narrowly and gate hard.
 
-### Data (see `docs/DATASETS.md`)
-- **Taiwan Mandarin**: TAT (Taiwanese Across Taiwan), Formosa Speech (FSR), Common Voice **zh-TW**.
-- **Code-switch**: ASCEND, SEAME (zh-en switching — accent differs, but boundary/style coverage helps).
-- **Retention set (non-negotiable)**: hold in a fixed fraction of the *original* English + mainland-zh +
-  code-switch distribution every batch. This is the analog of `jetson-tts`'s English-retention set;
-  without it the model forgets en.
+### Data (see `docs/DATASETS.md` — corrected by research)
+- **Taiwan-accent CS audio is scarce**: the only freely-downloadable Taiwan-accent zh-en code-switch
+  audio is **NTUML2021** (~11h); the only large free Taiwan-Mandarin corpus is **Common Voice zh-TW**
+  (~80h, CC0). **There is no public corpus of authentic Taiwan-accent zh-en CS audio** → manufacture it
+  by **distilling Breeze-ASR-25 pseudo-labels** on real TW audio (see `docs/RESEARCH.md`).
+  - **NOTE: TAT is Taiwanese *Hokkien*, not Mandarin** — do not use it here.
+- **Code-switch (mainland/HK accent — switch-point coverage + retention, not TW accent)**: TAL-CSASR,
+  ASCEND, CS-Dialogue, ASRU2019.
+- **Retention set (non-negotiable)** — mirror the baseline's upstream `multi_zh_en` recipe:
+  **LibriSpeech 960h (en) + TAL-CSASR (CS) + AISHELL-2 (mainland zh)** (or free proxies: LibriSpeech +
+  ASCEND + AISHELL-1). icefall's `--use-mux` does this mixing natively if you have the cuts.
 
-### Method — adapter / LoRA, low LR, frozen where possible
-- Train **LoRA or a bottleneck adapter on the zipformer encoder** (and optionally the joiner), keeping
-  the bulk of the encoder, the decoder (predictor), and the embedding **frozen**. Full fine-tune is
-  Tier 4 and the last resort — in `jetson-tts`, LoRA on the wrong module *and* full FT both collapsed
-  content; the lesson is **adapt the fewest parameters that move the accent, and verify constantly**.
-- **Low LR** (≈1e-5 region), short schedule, frequent checkpoints.
-- Keep the model **causal / streaming** (chunk + left-context config unchanged) — never fine-tune the
-  non-streaming variant and hope it exports back; train in the deployed streaming regime.
-- RNN-T (pruned transducer) loss as in the icefall zipformer recipe; mix retention + TW data per batch.
+### Method — PEFT first (icefall ships all three paths)
+- icefall provides three in-tree recipes for **this exact Zipformer2**, all with `--causal`/`--chunk-size`
+  /`--left-context-frames`: `zipformer/finetune.py` (full/partial, `--init-modules encoder --use-mux
+  --base-lr 0.0045`), `zipformer_adapter/` (bottleneck adapter, `--adapter-dim 8` ≈ 1.1% params,
+  toggleable), and `zipformer_lora/` (`--use-lora 1 --lora-r 8`, encoder-only, **folds into weights at
+  export → zero runtime cost**).
+- **Start with LoRA (rank 8) or the bottleneck adapter on the encoder**, base frozen. For a transducer
+  encoder, **PEFT is the proven anti-forgetting winner** (Whisper zh-en CS: full FT drove EN WER
+  3.40→13.15; LoRA held 3.51). **The `jetson-tts` "task-vector over LoRA" preference does NOT carry over**
+  — that LoRA failure was specific to the TTS CFM flow-matching decoder, not a transducer encoder.
+- **Low LR** (LoRA `--base-lr 0.045`; full/partial `0.0045` ≈ 1/10), short schedule, frequent ckpts.
+- Keep the model **causal / streaming** (`--causal 1`, matching chunk/left-context) — never fine-tune the
+  offline variant. Recover X-ASR's exact encoder dims/chunk string so `--init-modules` prefix-matches.
+- RNN-T (pruned transducer) loss as in the recipe; mix retention + TW data per batch (`--use-mux`).
+- **Optional**: EWC / Synaptic Intelligence (memory-free, proven on RNN-T, ~4–5% rel WERR) if retention
+  data is hard to obtain.
 
 ### Gate — MER-selected, not loss-selected
 Pick the checkpoint by **held-out MER on a multi-distribution dev set**, never by training loss:

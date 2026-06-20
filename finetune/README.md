@@ -1,9 +1,16 @@
 # finetune/ — icefall zipformer adaptation for Taiwan-accent zh-en
 
 This directory holds the **Tier 3–4** fine-tuning recipe from [`../TRAINING.md`](../TRAINING.md). It is
-intentionally empty of weights and runs nothing until **Tier 0** is satisfied — i.e. a trainable icefall
-checkpoint + tokenizer + config for X-ASR exists (the HF release is ONNX-only). Build Tiers 1–2 first;
-they need none of this.
+intentionally empty of weights. **Tier 0 is satisfied** (verified — see [`../docs/RESEARCH.md`](../docs/RESEARCH.md)):
+the trainable **`streaming_exp/pretrained.pt` (2.56 GB)** and the full recipe (incl. `bpe_punc.model`)
+are public at [`github.com/Gilgamesh-J/X-ASR`](https://github.com/Gilgamesh-J/X-ASR). The only Tier-0
+residual is a **smoke-test** that the `.pt` loads against the recipe and matches the deployed dims. Build
+Tiers 1–2 first regardless; they ship without any checkpoint.
+
+**Don't reinvent the recipe — icefall ships all three paths** (`egs/librispeech/ASR/`): `zipformer/finetune.py`
+(full/partial, `--init-modules`, `--use-mux`), `zipformer_adapter/` (bottleneck adapter, ~1.1% params),
+and `zipformer_lora/` (true LoRA, encoder-only, folds at export). Port these to X-ASR's dims rather than
+writing from scratch.
 
 ## What goes here (when Tier 0 clears)
 ```

@@ -17,6 +17,10 @@ Taiwan term choices (軟體, 滑鼠, 計程車, 馬鈴薯, 行動電話…) and 
 **contextual hotword biasing** in sherpa-onnx with `modified_beam_search`. Curated list:
 `data/tw_terms/cn_tw_terms.tsv` → `scripts/build_hotwords.py`. `s2twp` already handles most generic
 vocabulary; hotwords are for **entities and domain terms** OpenCC can't know.
+> **Verified caveat (`RESEARCH.md`): hotwords must be biased in SIMPLIFIED form** (the model's token
+> space) — a Traditional hotword `軟體` won't tokenize and silently never biases; it must be `软件`.
+> `build_hotwords.py` emits Simplified (via the `cn_term` column or OpenCC `t2s`). Hotwords also require
+> `modeling_unit=cjkchar+bpe` + a `bpe_vocab`, and force `modified_beam_search` → re-bench RTF @2 threads.
 
 ### 3. Code-switch boundaries (轉換點) — ✅ ships today, zero retrain
 Errors at the en↔zh switch point are a *decoding* problem before they're a *model* problem:

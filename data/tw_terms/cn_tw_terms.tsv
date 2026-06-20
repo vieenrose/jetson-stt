@@ -25,9 +25,10 @@
 列表機	打印机	2.0
 隨身碟	U盘	2.5
 部落格	博客	2.5
-# Taiwan named entities / brands (no cn_term; high boost — OpenCC won't help)
-台積電		3.0
-聯發科		3.0
-鴻海		2.5
-中華電信		2.5
-悠遊卡		2.5
+# Taiwan named entities / brands. The model emits Simplified, so bias with the Simplified
+# form (cn_term column) — e.g. 台積電 must be biased as 台积电, not the Traditional glyphs.
+台積電	台积电	3.0
+聯發科	联发科	3.0
+鴻海	鸿海	2.5
+中華電信	中华电信	2.5
+悠遊卡	悠游卡	2.5

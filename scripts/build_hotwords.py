@@ -7,9 +7,12 @@ sherpa-onnx contextual hotwords bias the transducer toward chosen phrases at dec
 hotwords file sherpa expects: one phrase per line as space-separated *modeling units*, optionally with a
 trailing `:<boost>`.
 
-For a BPE/char zipformer the modeling unit is the token. We emit the Traditional surface form and let
-sherpa tokenize it; for fully explicit control pass --tokens to verify every char is in the vocab and
-warn on OOV (which would silently never bias).
+IMPORTANT (verified — docs/RESEARCH.md): X-ASR emits **Simplified** Chinese, so hotwords MUST be in the
+model's Simplified token space, NOT Traditional — a Traditional hotword like `軟體` will not tokenize to
+the model's units and silently never biases. This script emits the **Simplified** form: it prefers the
+`cn_term` column, else converts `tw_term` with OpenCC `t2s` (the live demo does the same `t2s` step
+before biasing, then `s2twp` on the output). For a char/BPE zipformer the modeling unit is the token;
+pass --tokens to verify every char is in the vocab and warn on OOV.
 
 Input TSV columns:  tw_term   [cn_term]   [boost]
     軟體            软件        2.5
@@ -34,6 +37,15 @@ def load_vocab(tokens_path):
     return vocab
 
 
+def get_t2s():
+    """OpenCC Traditional->Simplified converter, or None if opencc is unavailable."""
+    try:
+        from opencc import OpenCC
+        return OpenCC("t2s")
+    except ImportError:
+        return None
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--terms", required=True, help="TSV: tw_term [cn_term] [boost]")
@@ -43,7 +55,8 @@ def main():
     args = ap.parse_args()
 
     vocab = load_vocab(args.tokens) if args.tokens else None
-    written, oov = 0, 0
+    t2s = get_t2s()
+    written, oov, no_simp = 0, 0, 0
     with open(args.terms, encoding="utf-8") as f, open(args.out, "w", encoding="utf-8") as out:
         for raw in f:
             line = raw.rstrip("\n")
@@ -53,22 +66,38 @@ def main():
             tw = cols[0].strip()
             if not tw:
                 continue
+            cn = cols[1].strip() if len(cols) >= 2 and cols[1].strip() else ""
             boost = args.boost
             if len(cols) >= 3 and cols[2].strip():
                 try:
                     boost = float(cols[2].strip())
                 except ValueError:
                     pass
+            # Bias in the model's SIMPLIFIED token space: prefer the cn_term column;
+            # else convert the tw_term via OpenCC t2s; else fall back to tw (with a warning).
+            if cn:
+                simp = cn
+            elif t2s is not None:
+                simp = t2s.convert(tw)
+            else:
+                simp = tw
+                no_simp += 1
             if vocab is not None:
-                missing = [c for c in tw if c.strip() and c not in vocab]
+                missing = [c for c in simp if c.strip() and c not in vocab]
                 if missing:
-                    print(f"[build_hotwords] OOV in '{tw}': {''.join(missing)} (won't bias)", file=sys.stderr)
+                    print(f"[build_hotwords] OOV in '{simp}' (from '{tw}'): {''.join(missing)} (won't bias)",
+                          file=sys.stderr)
                     oov += 1
             # sherpa hotwords: tokens space-separated; for char models, space out CJK chars.
-            spaced = " ".join(list(tw))
+            spaced = " ".join(list(simp))
             out.write(f"{spaced} :{boost}\n")
             written += 1
-    print(f"[build_hotwords] wrote {written} hotwords -> {args.out} ({oov} with OOV chars)", file=sys.stderr)
+    if no_simp:
+        print(f"[build_hotwords] WARNING: opencc not installed and {no_simp} terms had no cn_term column — "
+              f"those were emitted as-is (Traditional) and likely WON'T bias. `pip install "
+              f"opencc-python-reimplemented` or fill the cn_term column.", file=sys.stderr)
+    print(f"[build_hotwords] wrote {written} Simplified hotwords -> {args.out} ({oov} with OOV chars)",
+          file=sys.stderr)
 
 
 if __name__ == "__main__":
