@@ -4,6 +4,19 @@ Three things must be measured every time, because a win on one can be a loss on 
 (per language), **code-switch correctness**, and **the real-time budget at 2 threads**. A quality gain
 that breaks the budget is not a gain for the attendant.
 
+> **Prerequisite — the eval corpus does not exist yet (blocks everything).** `data/text/eval.tsv` is a
+> ~10-utterance *seed* and `data/` has **no audio**. The gating "orthographic-vs-acoustic split test"
+> below — which decides whether *any* GPU time is spent — is currently **unrunnable**. **First build a
+> ≥70-utt-per-slice paired audio+ref dev set** (TW-CS = NTUML2021 test; English = LibriSpeech test-clean;
+> mainland-zh = AISHELL-1 test; read TW = Common Voice zh-TW). See `RESEARCH.md` → "next actions".
+>
+> **Known limitations of the current MER metric (`scripts/eval_asr.py`) — validate before trusting it:**
+> it drops **punctuation** and lowercases **casing** before aligning (so the model's punctuation/casing —
+> which the downstream LLM parses — is *invisible* to the gate); it weights a 1-char CJK error equal to a
+> whole English word; and the per-language slices re-align after filtering, losing cross-boundary edits.
+> Add a **punctuation-F1 + casing check** as separate retention metrics, define **ε** and a bootstrap CI
+> for the gate, and score **acoustic robustness** (noisy/far-field slice) — see `RESEARCH.md` gaps.
+
 ## 1. Accuracy — MER (mixed error rate)
 zh-en code-switch can't be scored by a single WER or CER. Use **MER**: **CER on CJK spans + WER on
 English (token/word) spans**, segment-aligned.

@@ -133,8 +133,15 @@ toward TW audio **degrades English and mainland-zh / code-switch**. So adapt nar
 - Keep the model **causal / streaming** (`--causal 1`, matching chunk/left-context) — never fine-tune the
   offline variant. Recover X-ASR's exact encoder dims/chunk string so `--init-modules` prefix-matches.
 - RNN-T (pruned transducer) loss as in the recipe; mix retention + TW data per batch (`--use-mux`).
-- **Optional**: EWC / Synaptic Intelligence (memory-free, proven on RNN-T, ~4–5% rel WERR) if retention
-  data is hard to obtain.
+- **Optional**: EWC / Synaptic Intelligence (memory-free, proven on RNN-T, ~1–3% rel WERR) if retention
+  data is hard to obtain — a supplement, not a primary lever.
+
+> **`--init-modules` caveat (verified, `docs/RESEARCH.md`):** for *partial* FT it takes a prefix list
+> over **eight** submodules (`encoder_embed, encoder, decoder, joiner, simple_am_proj, simple_lm_proj,
+> ctc_output, attention_decoder`), and it only chooses what is *loaded* — it does **not** freeze. Passing
+> just `encoder` leaves the transducer's `simple_am_proj`/`simple_lm_proj` heads **randomly initialized**
+> (the opposite of intent). PEFT (LoRA/adapter) sidesteps this — it loads the full base and trains only
+> the added params — which is another reason to prefer it.
 
 ### Gate — MER-selected, not loss-selected
 Pick the checkpoint by **held-out MER on a multi-distribution dev set**, never by training loss:
@@ -150,12 +157,21 @@ A checkpoint that improves TW CER but regresses English WER is **rejected** — 
 `jetson-tts` choose a conservative blend over a stronger-but-broken one.
 
 ### Export back to the deployed runtime
-1. Export the adapted streaming model to ONNX via the icefall zipformer **streaming** export
-   (`export-onnx-streaming.py`), preserving the chunk/left-context contract and metadata.
-2. **int8-quantize** the ONNX (sherpa-onnx dynamic quantization) — int8 is the deployed format and the
-   one the 2-core budget was measured against.
-3. **Re-benchmark on the real Nano at 2 threads** (`bench_nano.py`). A quality win that breaks the
-   real-time budget is not a win for the attendant — it must stay under real-time while TTS runs too.
+0. **LoRA only**: first *merge* the LoRA into the base weights (`zipformer_lora/export.py`, which emits a
+   PyTorch checkpoint — there is **no ONNX in that dir**), then feed the merged `.pt` to the streaming
+   ONNX export below. Adapters: export via `zipformer_adapter/export-onnx.py` with `--causal 1`.
+1. Export to ONNX via `export-onnx-streaming.py` (opset 13). **CRITICAL: the architecture is taken from
+   CLI args, NOT recovered from the `.pt` (it loads `strict=False` — a wrong arch loads *silently*).**
+   Pass the deployed shape, read from the encoder ONNX `metadata_props`:
+   `--encoder-dim 192,256,512,768,512,256 --num-encoder-layers 2,2,4,5,4,2 --num-heads 4,4,4,8,4,4
+   --cnn-module-kernel 31,31,15,15,15,31 --causal 1 --chunk-size <8|24|48|96>` (8/24/48/96 →
+   160/480/960/1920 ms). Do **not** pass `--use-int32-inputs 1` (the deployed model uses int64 state).
+2. **int8-quantize** (ORT `quantize_dynamic`, weight-only QInt8) — deployed mix is **encoder.int8 +
+   joiner.int8 + decoder.fp32**. **Re-measure int8-vs-fp32 CER/WER** on the dev set (the "lossless" claim
+   rests on one 10 s clip — treat as near-lossless until checked).
+3. **Re-benchmark on the real Nano at 2 threads** (`bench_nano.py`) — and ideally **under co-tenancy with
+   TTS running** (the solo RTF 0.39 is not the gate number). PEFT folds to zero runtime, so a clean PEFT
+   export costs the same as the baseline graph.
 
 ---
 

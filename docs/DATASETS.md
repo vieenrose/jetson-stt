@@ -13,8 +13,8 @@ derived manifests are **gitignored**; only text/term seeds live in the repo.
 ## Taiwan-accent audio (the scarce, valuable axis)
 | Corpus | What | Code-switch | Size | License / access | Use |
 |---|---|---|---|---|---|
-| **NTUML2021** (`ky552/ML2021_ASR_ST`) | NTU ML lectures, TW-Mandarin + en | **yes** | ~11h (5h long eval) | unstated → **verify** · HF direct | **FT + eval** (only free TW-accent CS audio) |
-| **Common Voice zh-TW** | crowd-read TW Mandarin | no | ~80h val (131h tot) | **CC0** · direct | FT + eval (only large free TW-Mandarin) |
+| **NTUML2021** (`ky552/ML2021_ASR_ST`) | NTU ML lectures, TW-Mandarin + en | **yes** | 35.7k utts (~9h test) | **MIT** · HF direct | **FT + eval** (only free TW-accent CS audio) |
+| **Common Voice zh-TW** | crowd-read TW Mandarin | no | ~79h val (131h tot) | **CC0** · Mozilla Data Collective (account/agreement; data stays CC0) | FT + eval (only large free TW-Mandarin) |
 | NER-Trs-Vol | Taiwan-Mandarin radio (the real Formosa set) | no | ~610h | **Non-commercial** · FSW/ACLCLP app | FT — *NC blocks product use* |
 | MATBN | Taiwan-Mandarin broadcast news | no | 198h | ACLCLP, NC · app | FT + eval |
 
@@ -22,7 +22,7 @@ derived manifests are **gitignored**; only text/term seeds live in the repo.
 | Corpus | What | Size | License / access |
 |---|---|---|---|
 | **TAL-CSASR** (`csukuangfj/tal_csasr`) | mainland zh-en (baseline's own CS training data) | ~587h | unstated → verify · speechhome/HF |
-| **ASCEND** (`CAiRE/ASCEND`) | HK spontaneous zh-en | 10.6h | CC-BY-SA 4.0 · HF |
+| **ASCEND** (`CAiRE/ASCEND`) | **mixed-accent (HK + Taiwan + mainland)** zh-en, recorded HK | 10.6h | CC-BY-SA 4.0 · HF |
 | **CS-Dialogue** (`BAAI/CS-Dialogue`) | mainland zh-en dialogue | 104h | CC-BY-**NC**-SA · HF |
 | ASRU2019 CS | mainland zh-en | 240h | DataTang · challenge reg. |
 | SEAME | Singapore/Malaysia zh-en | ~30–192h | **LDC (paid)** |
