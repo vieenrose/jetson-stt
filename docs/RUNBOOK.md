@@ -4,6 +4,10 @@ This is the executable version of `RESEARCH.md` → "Recommended sequence of wor
 no training** — it decides whether a fine-tune is even warranted. Do not skip to training; the split
 test (step 4) is the gate.
 
+> **Phase 0 has been RUN — results in [`PHASE0_RESULTS.md`](PHASE0_RESULTS.md). Outcome: ship Tier-1/2,
+> no fine-tune** (the split test, mainland/SOTA controls, and both budget gates all passed). The steps
+> below are the reproducible procedure; the boxes at each step note what was measured.
+
 ## 0. Setup
 ```bash
 python3 -m venv .venv && . .venv/bin/activate

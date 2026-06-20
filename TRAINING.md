@@ -1,5 +1,12 @@
 # Training — making X-ASR better at zh-TW / en under the attendant's 2-core budget
 
+> **⚠️ CONTINGENCY ONLY — a fine-tune is NOT currently warranted.** Phase-0 measured on the real Nano
+> ([`docs/PHASE0_RESULTS.md`](docs/PHASE0_RESULTS.md)) found **no Taiwan-accent gap**: after the
+> zero-retrain Tier-1 `s2twp` fix, X-ASR is CI-competitive with the 2B in-domain Taiwan SOTA Breeze-25
+> and matches its own mainland clean-read floor. **Ship Tiers 1–2; skip Tiers 3–4.** Keep this recipe for
+> the one scenario that would reopen it: a future *held-out* eval (e.g. clean CV-zh-TW read speech, or a
+> new domain) showing a real acoustic gap that survives the orthographic-vs-acoustic split test.
+
 The baseline ([`README.md`](README.md)) is the **record-accuracy** zh-en streaming zipformer2 transducer
 (X-ASR), already real-time on the Nano at **int8 / sherpa-onnx CPU / 2 threads**. This document is the
 recipe for making it **better for Taiwan** without losing what makes it the baseline: English quality,

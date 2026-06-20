@@ -1,5 +1,9 @@
 # finetune/ — icefall zipformer adaptation for Taiwan-accent zh-en
 
+> **⚠️ CONTINGENCY ONLY.** Phase-0 ([`../docs/PHASE0_RESULTS.md`](../docs/PHASE0_RESULTS.md)) measured no
+> Taiwan-accent gap — **do not fine-tune.** This directory is kept for the case a future held-out gap
+> appears. Ship Tier-1/2 ([`../scripts/stream_asr.py`](../scripts/stream_asr.py)) instead.
+
 This directory holds the **Tier 3–4** fine-tuning recipe from [`../TRAINING.md`](../TRAINING.md). It is
 intentionally empty of weights. **Tier 0 is satisfied** (verified — see [`../docs/RESEARCH.md`](../docs/RESEARCH.md)):
 the trainable **`streaming_exp/pretrained.pt` (2.56 GB)** and the full recipe (incl. `bpe_punc.model`)

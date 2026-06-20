@@ -1,9 +1,17 @@
 # jetson-stt — streaming real-time zh-TW/en STT for the Jetson Nano, on a 2-core budget
 
-Pick, characterize, and **fine-tune** the best **streaming, real-time, code-switched Mandarin–English
+Pick, characterize, and adapt the best **streaming, real-time, code-switched Mandarin–English
 (zh-TW / en) speech-to-text** that runs on a **Jetson Nano gen1** inside a **2-CPU-core budget** —
 with or without the (sm_53) GPU. This is the STT half of an on-edge **smart real-time attendant**;
 [`jetson-tts`](https://github.com/vieenrose/jetson-tts) is the symmetric TTS half.
+
+> **Status (Phase 0 complete, measured on the real Nano — [`docs/PHASE0_RESULTS.md`](docs/PHASE0_RESULTS.md)):**
+> **Ship Tier-1 `s2twp` + Tier-2 hotwords; a fine-tune is NOT warranted.** OpenCC `s2twp` cuts Taiwan
+> zhCER 0.405→0.082 (zero retrain); there is no measured Taiwan-accent gap (X-ASR is CI-competitive with
+> the 2B in-domain Taiwan SOTA Breeze-25, and matches its own mainland clean-read floor); and the 2-core
+> budget holds (real single-thread TTS +5%, Tier-2 beam search +31%, both real-time). The deployable path
+> is [`scripts/stream_asr.py`](scripts/stream_asr.py). `TRAINING.md` / `finetune/` are retained as a
+> **contingency recipe** only — to run if a future *held-out* gap ever appears.
 
 ## Why 2 cores (and not 4)
 
