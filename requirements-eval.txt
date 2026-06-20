@@ -1,0 +1,6 @@
+# Eval-corpus assembly + co-tenancy benchmark (host, not the Nano). See scripts/build_eval_set.py.
+# datasets<4 keeps the soundfile audio-decoding backend (4.x switched to torchcodec, which pulls torch).
+datasets>=2.18,<4
+soundfile>=0.12
+librosa>=0.10
+numpy>=1.21

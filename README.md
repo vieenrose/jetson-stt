@@ -89,16 +89,19 @@ README.md            this file — system context, baseline, ship-vs-data-bound 
 TRAINING.md          the fine-tune recipe for zh-TW/en (answers "how do we make it better?")
 docs/
   RESEARCH.md        verified research synthesis — Tier-0 resolved, methods, datasets, decode levers, alternatives
+  RUNBOOK.md         Phase-0 gate, step by step (fix → build eval set → split test → co-tenancy)
   BASELINE.md        X-ASR int8 sherpa-onnx CPU characterization @1/2/3/4 threads (measured)
   ENV_SETUP.md       sherpa-onnx + icefall env on host (train) and Nano (deploy)
   ZH_TW_PLAN.md      Taiwan-Mandarin adaptation, tier by tier (orthography → accent)
   DATASETS.md        zh-TW / en code-switch corpora (TAT, CommonVoice zh-TW, ASCEND, SEAME…)
   EVAL.md            MER (CER+WER) + code-switch boundary + RTF/latency methodology
 scripts/
-  zh_tw_postproc.py  OpenCC s2twp + CJK spacing/punct normalization (zero-retrain)
-  build_hotwords.py  CN→TW term TSV → sherpa-onnx hotwords file with boosts
+  zh_tw_postproc.py  OpenCC s2twp (maximal CJK runs) + CJK normalization (zero-retrain; --selftest)
+  build_hotwords.py  CN→TW term TSV → Simplified sherpa-onnx hotwords file with boosts
   bench_nano.py      streaming RTF + encoder ms/chunk @ N threads on device
-  eval_asr.py        MER / CER / WER + code-switch boundary metrics from hyp/ref TSV
+  bench_cotenancy.py STT RTF under TTS contention — the real 2-core gate (--selftest)
+  eval_asr.py        MER/CER/WER + punctuation-F1 + casing + boundary, bootstrap CIs (--selftest)
+  build_eval_set.py  assemble the ≥70-utt/slice eval corpus via HF streaming (--dry-run)
 data/
   text/eval.tsv      seed zh-TW/en code-switch eval transcripts
   tw_terms/          CN→TW vocabulary overrides + hotword seed list

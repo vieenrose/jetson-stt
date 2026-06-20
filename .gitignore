@@ -21,8 +21,10 @@ data/manifests/
 *.mp3
 *.flac
 
-# Generated decode-time artifacts (reproducible via scripts/)
+# Generated decode-time + eval artifacts (reproducible via scripts/)
 data/tw_terms/hotwords.txt
+data/text/*.ref.tsv
+data/eval/
 hyp*.tsv
 results/
 eval/*.json
