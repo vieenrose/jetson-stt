@@ -107,6 +107,34 @@ Taiwan Mandarin, a completely different corpus. Same unified scoring.
 - **Caveat:** these are gains over the *weak base non-punctuation* model, not a claim against the *deployed*
   punctuation X-ASR (absolute mainland CER ~0.048 in `PHASE0_RESULTS.md`). Reproduce: `finetune/work/eval_cv_tar.py`.
 
+### Absolute anchor + the quality ceiling (the decisive result)
+The benchmarks above are *relative to the weak base* (`pretrained.pt`, the only trainable checkpoint we have).
+Running the **deployed punctuation X-ASR** (480 ms int8, what actually ships) on the same 500 CV17 zh-TW clips
+sets the absolute bar — and it is far higher than any base fine-tune:
+
+| Pipeline | Recognition MER | **Traditional-output CER** (attendant metric) |
+|---|---|---|
+| base + s2twp | 0.298 | 0.301 |
+| FT + s2twp | 0.137 | 0.139 |
+| native (direct, our FT) | 0.134 | 0.137 |
+| **deployed + s2twp** | **0.064** | **0.068** [0.058, 0.079] |
+
+- **The deployed model is ~2× better than our best fine-tune** (0.064 vs 0.134 recognition, CIs disjoint).
+  `pretrained.pt` is a *weak* checkpoint; the production weights were never in reach of base-FT.
+- **s2twp is essentially free orthography:** deployed recognition 0.064 → Traditional 0.068 (+0.004 only).
+- **The strong float checkpoint is unobtainable:** `fintuned_with_punctuation.pt` is an LFS *pointer* with no
+  object pushed (GitHub media CDN 404s; the HF mirror ships only the base `pretrained.pt` + ONNX), and int8
+  ONNX is not trainable. So there is no checkpoint to fine-tune that could beat the deployed model.
+- **Chunk size doesn't add accuracy:** sweeping the deployed model at 480/960/1920 ms + s2twp gives
+  0.074 / 0.070 / 0.072 Traditional CER — flat within noise (longer chunks only lower compute cost, at higher
+  latency). So 480 ms is the best operating point.
+
+**Conclusion — the on-Nano zh-TW ceiling is the deployed 480 ms punct model + OpenCC s2twp at ~0.068
+Traditional CER**, real-time at 2 cores. This triply confirms Phase-0's Tier-1 recommendation (ship deployed +
+s2twp). Our fine-tunes remain valid *research* artifacts: they validated the GB10→Nano training stack and
+showed base adaptation generalizes 2.2× out-of-domain — but they are not the production choice.
+Reproduce: `finetune/work/eval_deployed_anchor.py`, `finetune/work/eval_chunk_sweep.py`.
+
 ## Reproduce
 Full recipe + helpers in `finetune/` (and the working tree on the GB10). The fine-tuned model is published
 as a **demonstration** artifact (honest card) at
