@@ -95,6 +95,18 @@ in-tree fine-tune paths for this exact Zipformer2 (full, **bottleneck adapter**,
 detail, datasets, and the recommended plan: **[`docs/RESEARCH.md`](docs/RESEARCH.md)**. (The zero-retrain
 levers above remain the first thing to ship regardless.)
 
+## Models (Hugging Face)
+
+| model | what it is | status |
+|---|---|---|
+| [GilgameshWind/X-ASR-zh-en](https://huggingface.co/GilgameshWind/X-ASR-zh-en) | upstream **baseline** — zh-en streaming zipformer2 transducer (deployed int8 = the 2-core operating point) | external |
+| [Luigi/x-asr-zh-en-streaming-ntuml2021-ft-demo](https://huggingface.co/Luigi/x-asr-zh-en-streaming-ntuml2021-ft-demo) | **our fine-tune (demonstration)** — encoder FT of the X-ASR *base* model on NTUML2021, int8 streaming ONNX | published |
+
+The fine-tune was run end-to-end (GB10 k2-from-source → train → int8 export → **on-Nano benchmark**:
+Taiwan-CS MER **0.411 → 0.125**, English WER unchanged, RTF unchanged). It is an **in-domain demonstration
+of the pipeline**, not a drop-in replacement for the deployed model — the card states this. Details:
+[`docs/FINETUNE_RESULTS.md`](docs/FINETUNE_RESULTS.md).
+
 ## Layout
 
 ```
