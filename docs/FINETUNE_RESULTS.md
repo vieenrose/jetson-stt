@@ -86,6 +86,27 @@ Reading it:
    (only `tokens.txt` differs → no compute change), so speed is unchanged. Live comparison:
    **[`Luigi/x-asr-zh-tw-en-compare`](https://huggingface.co/spaces/Luigi/x-asr-zh-tw-en-compare)**.
 
+### Out-of-domain validation — Common Voice 17 zh-TW (N=500)
+The 40-clip NTUML2021 test is *in-domain*. To check whether the gain is real or just ML-lecture
+memorization, the same three models were run on **500 Common Voice 17 zh-TW clips** — everyday read
+Taiwan Mandarin, a completely different corpus. Same unified scoring.
+
+| Model | Native output | Recognition MER (95% CI) | Recognition zhCER | Raw-output CER vs zh-TW ref |
+|---|---|---|---|---|
+| **base** | Simplified | 0.298 [0.273, 0.324] | 0.298 | 0.497 |
+| **FT** | Simplified | **0.137** [0.121, 0.153] | 0.134 | 0.386 |
+| **native** | **Traditional** | **0.134** [0.119, 0.151] | 0.131 | **0.137** |
+
+- **The FT gain generalizes:** base 0.298 → FT 0.137 MER = **−54% (2.2×)** on a different corpus, CIs
+  disjoint. The shared factor with the FT data is **Taiwan Mandarin**, not the ML-lecture domain — so the
+  adaptation transfers across corpora (broader than the in-domain 40-clip test alone implied).
+- **`native` Traditional output is correct on real data with no post-step:** raw-output CER 0.137 ≈ its own
+  recognition CER 0.131 → only ~0.6% residual (the one-to-many cases a static token relabel can't
+  disambiguate). FT's raw output is 0.386 (Simplified, penalized vs Traditional refs).
+- **`native` == `FT` on recognition** (0.134 vs 0.137, overlapping CIs) — confirmed again at scale.
+- **Caveat:** these are gains over the *weak base non-punctuation* model, not a claim against the *deployed*
+  punctuation X-ASR (absolute mainland CER ~0.048 in `PHASE0_RESULTS.md`). Reproduce: `finetune/work/eval_cv_tar.py`.
+
 ## Reproduce
 Full recipe + helpers in `finetune/` (and the working tree on the GB10). The fine-tuned model is published
 as a **demonstration** artifact (honest card) at
