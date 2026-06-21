@@ -1,0 +1,73 @@
+# Fine-tune results — X-ASR zh-en, on the GB10 + Jetson Nano (2026-06-21)
+
+The contingency fine-tune (`TRAINING.md` Tier 3) was actually run end-to-end, to demonstrate the pipeline
+and measure the effect. **It validates the training stack and confirms Phase-0's framing: fine-tuning pays
+off for *domain/data* adaptation, at zero inference cost — there was no generic accent gap to begin with.**
+
+## What was built (GB10 Grace-Blackwell host)
+- **k2 built from source for CUDA 13 / Blackwell `sm_121`** (no prebuilt wheel exists). Required patching
+  k2's cmake arch-detector (pin `sm_121`, downgrade spurious errors, force single-arch, strip a stray
+  `compute_20` gencode CUDA 13 rejects) and supplying Python 3.12 headers locally (no sudo). Result:
+  `k2-1.24.4.dev…+cuda13.0.torch2.12.1`, working on GPU.
+- icefall + lhotse + the X-ASR recipe (`github.com/Gilgamesh-J/X-ASR`) wired up; exact deployed
+  architecture reconstructed and **strict-loaded** from `streaming_exp/pretrained.pt`.
+
+## Two findings that shaped everything
+1. **`pretrained.pt` is the BASE *non-punctuation* model** (tokenizer `lang_5000`), not the deployed
+   punctuation model (which ships ONNX-only). Verified by decoding the device's known-good features to the
+   exact reference text only with `lang_5000` tokens. So this fine-tune adapts the *base* model.
+2. **Features = lhotse `Fbank` (defaults already match the recipe's kaldifeat:** `high_freq=-400`,
+   `dither=0`, `snip_edges=False`). Targets must be Simplified (`t2s`) and CJK-char space-separated
+   (vocab stores `▁<char>`). With these correct, per-token loss validated the pipeline.
+
+## Fine-tune #1 — encoder adaptation (the benchmarked model)
+Encoder-only partial FT (147M trainable; decoder/joiner/embed frozen), 300 steps, **~40% retention**
+(English + mainland mixed every batch), causal/streaming training regime, on **200 NTUML2021 train clips**.
+Exported to int8 streaming ONNX (chunk 48 / left 256 = 960 ms variant) and run on the **real Jetson Nano**.
+
+**On-device benchmark — fine-tuned vs original** (int8 streaming, 2 threads, 40-clip slices):
+
+| metric | base (original) | FT | result |
+|---|---|---|---|
+| **Taiwan CS — MER** (NTUML2021, in-domain) | 0.411 [0.31, 0.52] | **0.125** [0.08, 0.18] | **−70%**, CIs disjoint |
+| **Taiwan CS — zhCER** | 0.388 | **0.102** | −74% |
+| **English WER — clean held-out** (LibriSpeech, *not* in FT data) | 0.064 [0.030, 0.113] | 0.061 [0.040, 0.086] | **unchanged — no forgetting** |
+| **RTF @2 threads** | 0.579 | 0.583 | **unchanged — zero budget cost** |
+
+**Reading it honestly:**
+- The Taiwan gain is **in-domain adaptation** (train/eval are disjoint NTUML2021 clips but the same
+  ML-lecture domain) — *not* evidence of a generic Taiwan-accent gap (Phase-0 found none vs the SOTA).
+- Retention is clean on **English** (held-out, no leakage → no forgetting). The mainland number is
+  leak-flattered (held-out FLEURS couldn't be pulled — HF throttling); treat mainland retention as
+  *not yet cleanly measured*.
+- FT changes weights only → **identical RTF**: a fine-tune does not cost the 2-core budget.
+- The base (non-punc) model's absolute CER is weaker than the deployed punctuation model (e.g. base
+  mainland CER ≫ the deployed model's 0.048 measured in `PHASE0_RESULTS.md`); the *relative* FT gain is
+  the valid result, not the absolute base numbers.
+
+## Fine-tune #2 — punctuation reconstruction (vocab extension)
+The base model has no punctuation. Rather than switch to the deployed `bpe_punc` tokenizer (0% token-ID
+overlap → full output retrain), I **extended** the `lang_5000` vocab with 7 punct tokens (`，。！？、；：`),
+resizing the decoder-embedding / joiner-output / simple-loss projections (copying the 5000 trained rows),
+and fine-tuned 400 steps on punctuated FLEURS. The model keeps all content knowledge and learns *where* to
+insert punctuation. On **held-out** clips:
+
+| before | after |
+|---|---|
+| `它让玩家可以通过电子运动和操作` | `他让玩家可以通过在空中移动设备来控子游戏中的运动和操作。` |
+| `阴暗面下面的地壳薄一些高地下的地壳厚` | `阴暗面下面的地壳薄一些高地下的地壳厚一些。` |
+
+So **punctuation is reconstructable by fine-tuning** (it's how the deployed model was made from the base).
+Sentence-final `。` is learned reliably; `，！？` placement sharpens with more/varied punctuated data —
+basic punctuation now, "precise" parity is a data-scale question.
+
+## Reproduce
+Full recipe + helpers in `finetune/` (and the working tree on the GB10). The fine-tuned model is published
+as a **demonstration** artifact (honest card): see the HF link in the repo description. It is **not** a
+drop-in replacement for the deployed model — it adapts the weaker *base* model on a small in-domain set.
+
+## Bottom line
+The whole round-trip works: **fine-tune on the GB10 → export to int8 streaming ONNX → run on the real
+Nano**, with a 70% in-domain MER gain, no English forgetting, and zero RTF cost. This both validates the
+training pipeline and reaffirms the Phase-0 decision (ship Tier-1/2; reserve fine-tuning for genuine
+domain/data adaptation, which this demonstrates).

@@ -47,3 +47,6 @@ nohup.out
 
 # OS
 .DS_Store
+
+# Fine-tune working tree (recipe clone, k2 source build, model artifacts, venv — all large/reproducible)
+finetune/work/

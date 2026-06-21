@@ -104,6 +104,7 @@ docs/
   RESEARCH.md        verified research synthesis — Tier-0 resolved, methods, datasets, decode levers, alternatives
   RUNBOOK.md         Phase-0 gate, step by step (fix → build eval set → split test → co-tenancy)
   PHASE0_RESULTS.md  MEASURED on the Nano: split test (s2twp removes 67% of error) + co-tenancy (budget at risk)
+  FINETUNE_RESULTS.md the contingency fine-tune actually RUN: GB10 k2-from-source → train → int8 export → Nano bench
   BASELINE.md        X-ASR int8 sherpa-onnx CPU characterization @1/2/3/4 threads (measured)
   ENV_SETUP.md       sherpa-onnx + icefall env on host (train) and Nano (deploy)
   ZH_TW_PLAN.md      Taiwan-Mandarin adaptation, tier by tier (orthography → accent)
