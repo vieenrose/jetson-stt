@@ -135,6 +135,27 @@ s2twp). Our fine-tunes remain valid *research* artifacts: they validated the GB1
 showed base adaptation generalizes 2.2× out-of-domain — but they are not the production choice.
 Reproduce: `finetune/work/eval_deployed_anchor.py`, `finetune/work/eval_chunk_sweep.py`.
 
+### Native-from-strong (frozen encoder) — negative result
+To test whether a *native Traditional* model could beat `deployed + s2twp` (0.071), the strong deployed model's
+head was reconstructed from its float ONNX and retrained on its frozen `encoder_out`:
+- **Gate 1**: torch decoder/joiner reconstructed from ONNX reproduce it numerically (decoder 1e-6, joiner 4e-5).
+- **Gate 2**: lhotse-fbank + raw-ONNX encoder + torch head = sherpa output on 9/10 clips (exact char match).
+- Head vocab-extended to Traditional + 47 one-to-many alternates (warm-started), trained with RNN-T loss on
+  600 NTUML + 1500 CV-train clips, frozen encoder.
+
+| Model (500 CV clips, same pipeline) | Traditional CER |
+|---|---|
+| deployed head + phrase-s2twp (baseline) | **0.0709** |
+| native, untrained (pure relabel) | 0.0701 |
+| native, best after training | 0.0758 |
+
+**Verdict: a native model does not beat `deployed + s2twp`.** The untrained relabel native *ties* the baseline
+(0.0701 vs 0.0709, within ±0.005 noise) — confirming the measured ceiling: s2twp already captures ~all the
+orthography, so there is no CER headroom. Training the warm-started head *hurt* (drifted off the optimum; best
+0.0758 > 0.0701 untrained) — the one-to-many alternates are too rare and s2twp too good at them to matter. The
+only thing a native variant buys is architectural (Traditional output with no runtime OpenCC), at zero accuracy
+gain. Reproduce: `finetune/work/native_strong_ft.py` (+ `native_precompute.py`, `enc_runner.py`).
+
 ## Reproduce
 Full recipe + helpers in `finetune/` (and the working tree on the GB10). The fine-tuned model is published
 as a **demonstration** artifact (honest card) at
