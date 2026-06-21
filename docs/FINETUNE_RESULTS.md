@@ -61,6 +61,31 @@ So **punctuation is reconstructable by fine-tuning** (it's how the deployed mode
 Sentence-final `。` is learned reliably; `，！？` placement sharpens with more/varied punctuated data —
 basic punctuation now, "precise" parity is a data-scale question.
 
+## Three-model unified benchmark (base · FT · native-Traditional)
+All three published models on the same 40 NTUML2021 Taiwan zh-TW/en code-switch clips, scored identically.
+Two metrics, because two different problems get fixed:
+- **Recognition MER/zhCER** — orthography-neutralized (both hyp & ref folded to Simplified via `t2s`) →
+  pure acoustic recognition quality, fairly comparable across models that output different scripts.
+- **Raw-output CER vs zh-TW ref** — the model's literal output vs the Traditional reference, i.e. *what the
+  user reads with no post-processing*.
+
+| Model | Native output | Recognition MER (95% CI) | Recognition zhCER | Raw-output CER vs zh-TW ref | On-Nano RTF @2thr |
+|---|---|---|---|---|---|
+| **base** (`...-base-onnx-demo`) | Simplified | 0.439 [0.332, 0.545] | 0.421 | 0.618 | 0.579 |
+| **FT** (`...-ntuml2021-ft-demo`) | Simplified | **0.121** [0.078, 0.168] | **0.118** | 0.444 | 0.583 |
+| **native** (`...-zh-tw-en-streaming-native-demo`) | **Traditional** | **0.121** [0.077, 0.175] | **0.118** | **0.128** | 0.583 |
+
+Reading it:
+1. **The fine-tune fixes recognition: 0.439 → 0.121 MER (3.6× error reduction); CIs disjoint** → real.
+2. **`native` == `FT` on recognition** (same fine-tuned encoder; only the output vocab/script differs) — so
+   the recognition gain is fully retained.
+3. **`native` fixes output format: raw-output CER 0.444 → 0.128** against Traditional refs, purely by emitting
+   Traditional zh-TW directly — **no `s2twp` post-step needed**. (base's 0.618 stacks Simplified↔Traditional
+   orthography mismatch on top of poor recognition.)
+4. **All three at RTF ≈ 0.58 on the Nano @ 2 threads (int8)** — `native` is byte-identical ONNX to `FT`
+   (only `tokens.txt` differs → no compute change), so speed is unchanged. Live comparison:
+   **[`Luigi/x-asr-zh-tw-en-compare`](https://huggingface.co/spaces/Luigi/x-asr-zh-tw-en-compare)**.
+
 ## Reproduce
 Full recipe + helpers in `finetune/` (and the working tree on the GB10). The fine-tuned model is published
 as a **demonstration** artifact (honest card) at
