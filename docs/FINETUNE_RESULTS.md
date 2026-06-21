@@ -65,8 +65,8 @@ basic punctuation now, "precise" parity is a data-scale question.
 Full recipe + helpers in `finetune/` (and the working tree on the GB10). The fine-tuned model is published
 as a **demonstration** artifact (honest card) at
 **[`Luigi/x-asr-zh-en-streaming-ntuml2021-ft-demo`](https://huggingface.co/Luigi/x-asr-zh-en-streaming-ntuml2021-ft-demo)**
-(currently **private** — flip to public if/when desired). It is **not** a drop-in replacement for the
-deployed model — it adapts the weaker *base* model on a small in-domain set.
+(public). It is **not** a drop-in replacement for the deployed model — it adapts the weaker *base* model on
+a small in-domain set (the card states this clearly).
 
 ## Bottom line
 The whole round-trip works: **fine-tune on the GB10 → export to int8 streaming ONNX → run on the real
