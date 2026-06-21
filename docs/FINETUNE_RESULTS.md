@@ -166,6 +166,24 @@ runtime OpenCC**, at the same speed (it *is* the deployed model) — and is **2�
 and shown in the [compare Space](https://huggingface.co/spaces/Luigi/x-asr-zh-tw-en-compare) (Simplified / +s2twp
 / native, all from the one deployed model). Source: `space/`.
 
+### Half-size distillation POC — negative (data-bound)
+To shrink X-ASR for more co-tenancy headroom, an **82M student (52% of the 159.7M teacher)** was distilled from
+the deployed teacher's pseudo-labels (4600 clips ≈ 9h: 600 NTUML + 4000 CV-zh-TW), slice-initialized from the
+base (all 989 tensors), k2 pruned RNN-T, 8000 steps on the GB10.
+
+| step | 0 | 1000 | 2000 | 4000 | 6000 | 8000 |
+|---|---|---|---|---|---|---|
+| student CER | 1.70 | 0.64 | 0.56 | 0.50 | 0.48 | **0.46** |
+
+**Plateaus at 0.46 — 7× worse than the teacher (0.064)**, gains flat after step 4000 → **data-bound, not
+compute- or architecture-bound**. Distilling/training a streaming ASR to teacher quality needs the teacher's
+data scale (100s–1000s of hours); 9h is 2–3 orders of magnitude short. A real attempt would mean pseudo-labeling
+hundreds of hours (CommonVoice-zh full + AISHELL + WenetSpeech + LibriSpeech) and a multi-day/week run — and
+even then "similar quality" at half size is plausible, not guaranteed. The only *existing* smaller model is the
+`x-asr-rapidspeech` GGUF `q4_k` (90MB, ~half) but it runs on ggml, which did not beat int8 sherpa at ≤2 cores.
+Since the 2-core budget already holds (1.05×), distillation is **not worth it now**. Reproduce:
+`finetune/work/kd_pseudolabel.py`, `kd_student_train.py`.
+
 ## Reproduce
 Full recipe + helpers in `finetune/` (and the working tree on the GB10). The fine-tuned model is published
 as a **demonstration** artifact (honest card) at
