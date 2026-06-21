@@ -107,11 +107,14 @@ Taiwan-CS MER **0.411 → 0.125**, English WER unchanged, RTF unchanged). It is 
 of the pipeline**, not a drop-in replacement for the deployed model — the card states this. Details:
 [`docs/FINETUNE_RESULTS.md`](docs/FINETUNE_RESULTS.md).
 
-**🤗 Live demo:** [**Original vs Fine-tuned compare Space**](https://huggingface.co/spaces/Luigi/x-asr-zh-tw-en-compare)
-— record/upload zh-TW/en speech (or pick a sample) and see the original X-ASR (Simplified, +`s2twp`) vs the
-fine-tuned **native Traditional zh-TW** output side by side. Also published:
-[base (Simplified)](https://huggingface.co/Luigi/x-asr-zh-en-streaming-base-onnx-demo),
-[native zh-TW (Traditional)](https://huggingface.co/Luigi/x-asr-zh-tw-en-streaming-native-demo).
+**🤗 Live demo:** [**compare Space**](https://huggingface.co/spaces/Luigi/x-asr-zh-tw-en-compare)
+— record/upload zh-TW/en speech (or pick a sample) and see, all from the **same deployed model**: X-ASR
+(Simplified) vs **+ OpenCC `s2twp`** (Traditional, post-step) vs **native Traditional** (no post-step). The
+[**native Traditional model**](https://huggingface.co/Luigi/x-asr-zh-tw-en-streaming-native-demo) is the
+deployed 480 ms int8 model with an `s2twp`-relabeled tokenizer: **0.0675 Traditional CER vs 0.0683 for deployed
++ s2twp** (tied) on 500 CV17 zh-TW clips — native Traditional output, **zero runtime OpenCC**, same speed. It
+reaches the deployed ceiling; a fine-tune cannot beat it (see [`docs/FINETUNE_RESULTS.md`](docs/FINETUNE_RESULTS.md)).
+Also published: [base (Simplified)](https://huggingface.co/Luigi/x-asr-zh-en-streaming-base-onnx-demo).
 
 ## Layout
 

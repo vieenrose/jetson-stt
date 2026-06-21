@@ -156,6 +156,16 @@ orthography, so there is no CER headroom. Training the warm-started head *hurt* 
 only thing a native variant buys is architectural (Traditional output with no runtime OpenCC), at zero accuracy
 gain. Reproduce: `finetune/work/native_strong_ft.py` (+ `native_precompute.py`, `enc_runner.py`).
 
+**Shipped deliverable — native Traditional at deployed quality, no training.** Since the goal was to *match*
+`deployed + s2twp` (not beat it), the clean answer is the untrained relabel: take the deployed 480 ms int8 model
+**as-is** and bake `s2twp` into its `tokens.txt` (`scripts/build_native_strong.py`). On 500 CV17 zh-TW clips it
+scores **0.0675 Traditional CER vs 0.0683 for deployed + s2twp** (tied), emits Traditional **directly with no
+runtime OpenCC**, at the same speed (it *is* the deployed model) — and is **2× better than the prior native demo**
+(weak-base relabel, 0.137). Published to
+[`Luigi/x-asr-zh-tw-en-streaming-native-demo`](https://huggingface.co/Luigi/x-asr-zh-tw-en-streaming-native-demo)
+and shown in the [compare Space](https://huggingface.co/spaces/Luigi/x-asr-zh-tw-en-compare) (Simplified / +s2twp
+/ native, all from the one deployed model). Source: `space/`.
+
 ## Reproduce
 Full recipe + helpers in `finetune/` (and the working tree on the GB10). The fine-tuned model is published
 as a **demonstration** artifact (honest card) at
