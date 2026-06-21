@@ -1,0 +1,132 @@
+# Distillation data plan — how to get enough data to shrink X-ASR well
+
+The half-size distillation POC plateaued at **0.46 CER (7× worse than the teacher)** purely because it had
+~9 h of audio. This is the deep-research answer to "what data, real or synthetic, does it take to do it
+right." Five parallel research sweeps (real Mandarin corpora, code-switch + English corpora, synthetic TTS,
+pseudo-labeling at scale, distillation methodology) — sources cited inline below.
+
+## The single biggest reframe: don't distill from scratch — adopt + fine-tune a pretrained small model
+
+From-scratch distillation needs the teacher's data scale (Whisper used 680k h; icefall streaming zh models use
+10–14k h). **A streaming model trained from scratch on 50 h hit ~84% WER** ([Google, arXiv:2008.05086]). The
+data-efficient route is to **start from an existing pretrained small streaming zipformer and fine-tune it** on
+zh-TW + code-switch data (icefall fine-tune at lr≈1/10 took a model −30% rel. WER on a new domain). Candidates,
+all Apache-2.0:
+
+| Start-from model | Size (int8) | Lang | Streaming | Quality | Source |
+|---|---|---|---|---|---|
+| **sherpa-onnx-streaming-zipformer-multi-zh-hans-2023-12-12** | **~73M** (enc 67M) | zh (~14k h) | yes | aishell-1 **1.91**, WS-net 8.54 | sherpa-onnx zoo |
+| icefall-asr-zipformer-wenetspeech-streaming-large | ~76M | zh | yes | dev 8.0 / net 9.0 | k2-fsa HF |
+| icefall-asr-zipformer-wenetspeech-streaming-**small** | **~33M** | zh | yes | (card empty — verify) | k2-fsa HF |
+| sherpa-onnx-streaming-zipformer-bilingual-zh-en-2023-02-20 | ~190M | **zh-en** | yes | (no CER published) | csukuangfj HF |
+
+**There is no public sub-40M *zh-en* streaming zipformer** — so the realistic "half size" target is the **~73M
+multi-zh-hans** model (46% of X-ASR's 160M), fine-tuned to add English code-switch + zh-TW. A "third" (~33M)
+exists for zh-only and will trail the teacher meaningfully. **Recommendation: fine-tune multi-zh-hans-73M (or
+layer-drop-init from X-ASR) rather than distilling from scratch.**
+
+## Data-volume targets (streaming zh-en, near-teacher = CER ~0.064)
+
+- **~80M student: ~1,000 h to be usable, ~3,000–10,000 h to approach teacher CER.** Below ~1k h, CER ≈ doubles.
+- **~33M student:** carries an intrinsic penalty; budget the same multi-thousand-hour pool and accept it won't
+  fully reach 0.064.
+- Dominant lever is **data/corpus diversity, not parameters** (adding 10k h GigaSpeech to 960 h LibriSpeech cut
+  the *same* 70M model's test-other 7.36→5.50; multi-corpus zh drove AISHELL-1 CER ~4.3→1.9).
+
+## Real data inventory
+
+**Commercial-safe (CC0 / Apache / CC-BY[-SA]) — use if the attendant ships as a product:**
+
+| Corpus | Hours | Accent | License | Notes |
+|---|---|---|---|---|
+| Common Voice zh-TW | ~77 valid | **Taiwan** | CC0 | only commercial-clean Taiwan audio; pull from Mozilla Data Collective (left HF Oct-2025), self-convert |
+| Common Voice zh-CN / zh-HK | ~118 / ~262 valid | Mainland/HK | CC0 | general Mandarin, zero license risk |
+| AISHELL-1 + AISHELL-3 + THCHS-30 | ~300 | Mainland | Apache-2.0 | clean read-speech base; `carlot/AIShell` streams as parquet |
+| AISHELL-4 + AliMeeting | ~240 | Mainland | CC-BY-SA-4.0 | spontaneous/meeting acoustics |
+| ASCEND | 10.6 | HK | CC-BY-SA-4.0 | zh-en **code-switch** (HK accent) |
+| NTUML2021 (+ ML-lecture-long) | ~11 (+5) | **Taiwan + en CS** | permissive (verify) | tiny but on-target → reserve as **dev/eval** |
+
+**Research/NC only (large) — fine for internal R&D, not a shipping product:**
+- **FSW / NER-Trs (Formosa)** — **~3,000 h Taiwan-Mandarin broadcast**, the single biggest zh-TW lever; gated
+  application via ACLCLP/NYCU, non-commercial.
+- **Emilia ZH** — ~50k h, in-the-wild, **streams as WebDataset**, CC-BY-NC-4.0 + gated.
+- **WenetSpeech** — 10k h, CC-BY-4.0 **NC** + gated + script-load.
+- **TALCS / TAL_CSASR** — **~587 h, largest open zh-en code-switch** (Mainland, tutoring), on HF.
+- **CS-Dialogue** — 104 h spontaneous zh-en CS (Mainland), CC-BY-NC-SA.
+
+**English retention:** MLS-en (~44k h, CC-BY), People's Speech (~30k h, commercial-OK), GigaSpeech (10k h),
+Common Voice en (CC0). ⚠️ **Native US English (LibriSpeech) measurably *hurt* code-switch** (accent mismatch);
+prefer domain-matched / Taiwan-accented English, and **weight English well above its token share** (≈100:1 vs
+Mandarin) so the student stays bilingual.
+
+**Critical flags:** TAT / FSR-2020 / "Taiwan Tongues" are **Hokkien (台語), not Mandarin — do not use for Mandarin
+acoustic training**. No-derivatives corpora (KeSpeech, MagicData-RAMC, Primewords, ST-CMDS, aidatatang) are
+legally awkward for training. GigaSpeech-2 / MLS / VoxPopuli have **no Mandarin**.
+
+## Synthetic data — the unlock for Taiwan code-switch specifically
+
+There is **no large open Taiwan zh-en code-switch corpus**, so synthetic is essential here — and there's a
+near-exact published precedent: **"Twister" (arXiv:2506.11130)** adapted Whisper using **BreezyVoice** (a
+zh-TW CosyVoice-family TTS), **lowering real-data need 10×** and cutting **CSZS-zh-en code-switch −55.9%**,
+Common Voice zh-TW −19%, on a corpus that was ~5,800 h *mostly synthetic* with only 10 h real English.
+
+**Recipe (evidence-backed):**
+- **TTS tools (Apache-2.0):** **CosyVoice2-0.5B** (proven base for the zh-TW/CS results; cross-lingual cloning)
+  and **Spark-TTS-0.5B** (controllable novel-voice generation → hundreds of synthetic speakers). **GPT-SoVITS**
+  (MIT) or **BreezyVoice** for authentic zh-TW accent from a ~1-min Taiwan reference clip. Seed a few real zh-TW
+  reference voices via Edge-TTS (only source of native zh-TW voices) then clone.
+- **Code-switch TEXT:** LLM-generate as a "Taiwanese bilingual speaker," inserting English at natural switch
+  points (nouns / named entities / technical terms), few-shot from SEAME/ASCEND exemplars; inject the
+  attendant's domain English terms; filter with an LLM-as-judge for naturalness (not perplexity).
+- **Mix:** **~1:1 real:synthetic** (cap synthetic ≤~30% if the real set is small but in-domain); keep
+  **≥50–100 h real** in the pot. Spend the synthetic budget on **code-switch + rare/domain terms** (documented
+  30–65% rel. gains exactly there).
+- **Mandatory augmentation:** noise (SNR 0–15 dB) + RIR reverb on synthetic clips; maximize **text/phonetic
+  diversity** (matters more than speaker count); skip pitch perturb and high-end vocoders (Griffin-Lim is fine).
+- **Guard:** hold out a **real** CS test set — if synthetic-set accuracy climbs but real CER stalls, lower the
+  synthetic ratio (ASR over-fits TTS artifacts; synthetic-only ≈ doubles WER).
+
+## Pseudo-labeling at scale — use the *stronger* teacher
+
+The proven blueprint is **K2D (arXiv:2407.10603)**: Whisper-large-v2 pseudo-labeled ~60k h of NTU
+Mandarin-English lecture audio → a **2× smaller, 5× faster streaming student that BEAT the teacher** (−16% to
+−30% MER across sets), trainable in **1–2 days on one RTX 3090** (arXiv:2409.13499).
+
+- **Label with Breeze-ASR-25, not X-ASR.** Breeze (2B, Apache-2.0, Taiwan SOTA, **native Traditional output**)
+  beats Whisper on zh-TW (7.97 vs 9.84 WER) and code-switch (CSZS 13.0 vs 29.5). A stronger teacher's labels let
+  a small student exceed X-ASR; native Traditional avoids the lossy Simplified→Traditional script noise. Use
+  **X-ASR or Whisper-base as a cheap cross-validation filter**, not as the labeler.
+- **Filter aggressively (the dominant quality lever):** two-model agreement; drop PL-vs-ref WER >10%;
+  utterance-confidence <0.9; anti-hallucination heuristics (no unigram ≥3×, words/sec ∈ [1,4]); LID + Traditional
+  script check. Aggressive filtering to 100 h has matched 7,500 h.
+- **Iterate** 3–6 generations (hard labels + slimIPL cache or EMA teacher; soft labels collapse CTC).
+- **Unlabeled-audio sources:** CC0 Common Voice (incl. unvalidated buckets); Apache AISHELL; **for R&D** FSW/NER
+  (~3k h Taiwan), Emilia, WenetSpeech. **Legal:** Taiwan has **no TDM exception** and a 2025 criminal ruling
+  (Lawsnote) — **do not scrape YouTube/podcasts for a shipping product**; pursue a formal Legislative-Yuan IVOD
+  data request for licensed Taiwan speech instead.
+
+## Distillation method (once data exists)
+
+- **Primary: sequence-level KD** on filtered teacher pseudo-labels (gains scale with *unlabeled* hours, not your
+  labeled set). **Add one-best-path soft-target KD** (arXiv:2110.03334: +38.5% rel. WERR with +860 h unlabeled).
+- **Init:** copy/freeze the encoder or layer-drop-init from the teacher (Distil-Whisper froze the copied encoder).
+- **Augment always:** speed-perturb 3× + SpecAugment (icefall defaults); MUSAN/RIR only to match the Nano's mic.
+- icefall ships **MVQ-KD** (`pruned_transducer_stateless6`, `--enable-distillation`) if going the codebook route.
+- If teacher is offline vs a streaming student, add **alignment-matched / two-stage KD** (arXiv:2306.15171, −19%).
+
+## Recommended phased execution
+
+1. **POC v2 (days):** fine-tune **multi-zh-hans-73M** on what we already have + cheap adds — NTUML + CV-zh-TW +
+   **TALCS (587 h)** + **ASCEND**, all (re)labeled by **Breeze-ASR-25**, with speed-perturb + SpecAugment.
+   Target: beat the 0.46 plateau decisively and gauge the curve. (This alone is ~700 h vs the failed 9 h.)
+2. **Add synthetic CS (1–2 weeks):** generate ~300–500 h zh-TW/en code-switch via CosyVoice2/Spark-TTS +
+   LLM-CS-text, 1:1 with real, noise/reverb aug. Re-train; hold out a real CS eval.
+3. **Scale pseudo-labels (R&D track):** Breeze-label FSW/NER (~3k h Taiwan) + Emilia ZH subset, filter hard,
+   iterate 3 generations → push toward near-teacher at ~73–80M.
+4. **Decide third-size (~33M)** only if the budget needs it; expect a real quality gap.
+
+**Bottom line:** half-size at near-teacher quality is **achievable**, but via *fine-tuning a pretrained small
+streaming model on ~1k–3k h* (heavily real + synthetic-CS + Breeze-pseudo-labeled) — **not** from-scratch
+distillation. Commercial-safe data caps near ~700 h (CC0 + Apache + synthetic + own licensed audio); reaching
+the multi-thousand-hour regime needs the research-track corpora (FSW/NER, Emilia, WenetSpeech) or licensed
+Taiwan audio. Effort: POC v2 in days; production-grade in weeks.
