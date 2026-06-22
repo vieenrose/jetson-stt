@@ -176,6 +176,30 @@ recognition). Results:
   Then re-run `scripts/kd5_train.py` (warm small-bilingual + Taiwan data, SpecAugment, keep-best) — the recipe is
   built and proven; only the data is missing.
 
+## BREAKTHROUGH — YouTube is the reachable, unlimited Taiwan source (2026-06-22)
+
+The box egresses via a **HiNet Taiwan IP (219.85.x)** — so the earlier "Taiwan hosts unreachable" was wrong;
+the real blocker was the **sandbox's broken ffmpeg DNS** (ffmpeg can't resolve hosts; curl/python can). YouTube
+(Google global CDN) is **reachable and fast** here. The cracking recipe (`scripts/yt_gather.py`):
+- **deno** (ARM binary, direct download — no `curl|sh`) as the JS runtime → yt-dlp can extract **DASH audio-only
+  (itag 140)**.
+- DASH is fetched by **yt-dlp's own resolver** (not ffmpeg/m3u8) → **bypasses the ffmpeg-DNS wall**; ffmpeg only
+  converts the *local* file. (Live/HLS-only videos still fail via ffmpeg — filter `!is_live`.)
+- One 2.4h video → 16 kHz wav in ~1 min at ~2.2 MB/s. Then 12s-window → X-ASR pseudo-label → manifest.
+- Verified: PTS 公視 news + Legislative Yuan sessions transcribe cleanly (Taiwan Mandarin).
+
+```bash
+yt-dlp --js-runtimes deno -f "140/bestaudio[ext=m4a]/bestaudio" \
+  --match-filter "!is_live & duration>120 & duration<14400" \
+  -x --audio-format wav --postprocessor-args "ExtractAudio:-ar 16000 -ac 1" "<url|ytsearchN:query>"
+```
+
+**This routes around the whole data wall:** unlimited Taiwan-Mandarin audio (news/talk/lecture/gov), fast, from
+this box. `scripts/yt_gather.py` enumerates TW searches → downloads → segments → X-ASR-labels → `yt_manifest.tsv`
+(resumable, thread-pooled). Use is recognition-only (user's call: training to recognize, not reproduce). Combine
+the gathered hundreds of hours with the existing Taiwan data → kd6 (warm small-bilingual + Taiwan-at-scale) — the
+real test, now unblocked.
+
 **Bottom line:** half-size at near-teacher quality is **achievable**, but via *fine-tuning a pretrained small
 streaming model on ~1k–3k h* (heavily real + synthetic-CS + Breeze-pseudo-labeled) — **not** from-scratch
 distillation. Commercial-safe data caps near ~700 h (CC0 + Apache + synthetic + own licensed audio); reaching
