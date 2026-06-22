@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """X-ASR zh-TW/en — Simplified vs +OpenCC-s2twp vs native-Traditional, all from ONE deployed model."""
-import os, numpy as np, soundfile as sf, gradio as gr
+import os, threading, numpy as np, soundfile as sf, gradio as gr
 from huggingface_hub import snapshot_download
 import sherpa_onnx
 from opencc import OpenCC
@@ -16,11 +16,14 @@ def _rec(d, tokens):
         sample_rate=16000, feature_dim=80)
 
 _R = {}
-def recs():  # lazy: load on first use so the app starts instantly
+_LOCK = threading.Lock()
+def recs():  # lazy + thread-safe; pre-warmed in the background at boot so the first transcription isn't slow
     if not _R:
-        d = snapshot_download(REPO)
-        _R["simp"] = _rec(d, "tokens_simplified.txt")  # original deployed tokenizer -> Simplified
-        _R["native"] = _rec(d, "tokens.txt")           # s2twp-relabeled tokenizer  -> Traditional
+        with _LOCK:
+            if not _R:
+                d = snapshot_download(REPO)
+                _R["simp"] = _rec(d, "tokens_simplified.txt")  # original deployed tokenizer -> Simplified
+                _R["native"] = _rec(d, "tokens.txt")           # s2twp-relabeled tokenizer  -> Traditional
     return _R
 
 def decode(rec, samples, sr):
@@ -80,4 +83,5 @@ with gr.Blocks(title="X-ASR zh-TW/en — native Traditional vs OpenCC") as demo:
         gr.Examples(examples=ex, inputs=inp, label="zh-TW / en code-switch samples (NTU ML lectures)")
 
 if __name__ == "__main__":
+    threading.Thread(target=recs, daemon=True).start()  # pre-warm models in background (instant boot, fast first run)
     demo.launch()
