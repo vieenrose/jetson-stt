@@ -150,6 +150,32 @@ to scale once that data exists.
 **Net:** the fast small **relabel-only** model (0.128, native, no OpenCC) ships today; closing its gap to X-ASR
 is the same data-bound distillation problem.
 
+## Realized gathering + the environment wall (2026-06-22)
+
+Attempted to assemble a real Taiwan corpus and distill it into the small-bilingual student (warm baseline 0.108
+recognition). Results:
+- **kd3 (9h):** net-negative (0.108 → 0.158). **kd4 (167h, but ~150h Mainland AISHELL):** net-zero (best stayed
+  0.108) — **Mainland data does NOT help the Taiwan target; accent matters, not raw hours.** **kd5 (10.6h
+  Taiwan-only):** disrupts to ~0.15 then recovers (small-data) — too little to beat 0.108. **Lesson: need Taiwan
+  data AT SCALE (1k–10k h).**
+- **Environment wall (key blocker):** from the GB10, bulk download of Taiwan-hosted data fails —
+  - **IVOD** (Legislative Yuan, `hinet.net` CDN): sustained download hangs. The built pipeline
+    `scripts/ivod_gather.py` (curl HLS → VAD-window → X-ASR pseudo-label, gov speech / Art.9 / legally clean)
+    **works** and banked **~6h** before the CDN stalled — proof it scales from a Taiwan network.
+  - **NCHC FLUD** (~400h, OGDL open): `nchcproxy` host hangs.
+  - **matbn** (~127h, HF): **gated** — needs a 1-click access request.
+  - **formosaspeech** (Taiwan Mandarin, HF): streaming hangs; parquet stores audio as **external refs** (raw
+    download yields ~0h). (The formospeech *org* is otherwise Hakka, not Mandarin.)
+  - **YODAS**: `datasets` schema-cast bug + Mainland-mixed.
+  - HF works but is slow here. **Reachable Taiwan data from this box ≈ 10.6h.**
+- **To break it (requires user/infra action, not method):**
+  1. **Request matbn access** on huggingface.co/datasets/formospeech/matbn (your HF account) → +127h reliable.
+  2. **Run `scripts/ivod_gather.py` + the NCHC FLUD URLs from a Taiwan-network machine** (picard / a TW VPS /
+     Tailscale TW exit) → IVOD tens-of-thousands h + NCHC 400h, fast. The constraint is purely network *location*
+     (these are .tw ISP/academic hosts).
+  Then re-run `scripts/kd5_train.py` (warm small-bilingual + Taiwan data, SpecAugment, keep-best) — the recipe is
+  built and proven; only the data is missing.
+
 **Bottom line:** half-size at near-teacher quality is **achievable**, but via *fine-tuning a pretrained small
 streaming model on ~1k–3k h* (heavily real + synthetic-CS + Breeze-pseudo-labeled) — **not** from-scratch
 distillation. Commercial-safe data caps near ~700 h (CC0 + Apache + synthetic + own licensed audio); reaching
