@@ -125,6 +125,31 @@ Mandarin-English lecture audio → a **2× smaller, 5× faster streaming student
    iterate 3 generations → push toward near-teacher at ~73–80M.
 4. **Decide third-size (~33M)** only if the budget needs it; expect a real quality gap.
 
+## Realized experiment — small-bilingual (30.9M) relabel + X-ASR distillation attempt
+
+A genuinely small **bilingual** zh-en streaming zipformer *does* exist (we'd missed it): `sherpa-onnx-streaming-
+zipformer-small-bilingual-zh-en-2023-02-16` — **30.9M params (zipformer1), real English BPE (494 pieces, not
+just letters)**, with a **trainable torch checkpoint** at `csukuangfj/k2fsa-zipformer-bilingual-zh-en-t`
+(`exp/pretrained.pt`, bpe.model). Built it in icefall's `pruned_transducer_stateless7_streaming`
+(nhead 4,4,4,4,4 / attention-dims 192 / encoder-dims 256 / ff 768 / vocab 6254) — **clean strict-load**.
+
+**Deliverable (no training): relabel-only → native Traditional zh-TW + English, no OpenCC.** Applying the
+`s2twp` token-relabel to its (bare-char) Chinese tokens gives, on 500 CV-zh-TW clips (streaming int8, 2 thr):
+**raw-Traditional CER 0.128** (full-context 0.108), **~2.6–5× fewer FLOPs than X-ASR** (RTF 0.021 vs 0.055 on
+GB10), package ~50 MB vs X-ASR's ~169 MB. A real **speed/size-vs-accuracy trade**: 0.128 (small, fast, native)
+vs X-ASR's 0.068 (5× bigger). Package: `finetune/work/pkg/small_native/`.
+
+**Distilling X-ASR's quality *into* it failed on 9h — data wall, confirmed a 4th time.** Warm-started clean at
+0.108, then fine-tuning on 9h of X-ASR pseudo-labels *disrupted* the encoder (0.108→0.218) and only clawed back
+to 0.158 by step 4000 — **net-negative vs the untrained 0.108**. (A tokenizer bug — the `bpe.model` is a 500-
+piece *English-only* BPE; Chinese chars must map to bare tokens.txt ids — first caused a full collapse to CER
+1.0; fixed, but the underlying data limit remains.) Improving recognition needs training the encoder, which on
+9h overfits. To beat 0.108→0.068 needs the **full data pipeline below (1k–10k h)**; `kd3_distill.py` is ready
+to scale once that data exists.
+
+**Net:** the fast small **relabel-only** model (0.128, native, no OpenCC) ships today; closing its gap to X-ASR
+is the same data-bound distillation problem.
+
 **Bottom line:** half-size at near-teacher quality is **achievable**, but via *fine-tuning a pretrained small
 streaming model on ~1k–3k h* (heavily real + synthetic-CS + Breeze-pseudo-labeled) — **not** from-scratch
 distillation. Commercial-safe data caps near ~700 h (CC0 + Apache + synthetic + own licensed audio); reaching
